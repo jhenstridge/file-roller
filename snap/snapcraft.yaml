@@ -45,10 +45,10 @@ description: |
 icon: data/icons/256x256/apps/file-roller.png
 
 grade: devel # must be 'stable' to release into candidate/stable channels
-confinement: devmode
+confinement: strict
 
-# libgdk is linked with libmirclient, which seems to be specifically
-# excluded from the snap in favour of the mir-libs snap.
+# libgdk is linked with libmirclient, which doesn't seem to end up in
+# the snap otherwise.
 plugs:
   mir-libs:
     interface: content
@@ -56,14 +56,35 @@ plugs:
     target: mir-libs
     default-provider: mir-libs
 
+slots:
+  # D-Bus interface
+  archive-manager:
+    interface: dbus
+    bus: session
+    name: org.gnome.ArchiveManager1
+  # for GtkApplication registration
+  file-roller:
+    interface: dbus
+    bus: session
+    name: org.gnome.FileRoller
+
 apps:
   file-roller:
     command: desktop-launch $SNAP/bin/file-roller
+    environment:
+      # FIXME: This should read as follows, but won't work until
+      # https://github.com/snapcore/snapd/pull/3020 is included in a
+      # release.
+      # GSETTINGS_SCHEMA_DIR: $SNAP/share/glib-2.0/schemas
+      GSETTINGS_SCHEMA_DIR: /snap/file-roller/current/share/glib-2.0/schemas
     plugs:
       - x11
       - home
       - gsettings
       - mir-libs
+    slots:
+      - archive-manager
+      - file-roller
 
 parts:
   fileroller:
@@ -73,6 +94,7 @@ parts:
     source: .
     install: |
       mkdir -p $SNAPCRAFT_PART_INSTALL/mir-libs
+      glib-compile-schemas $SNAPCRAFT_PART_INSTALL/share/glib-2.0/schemas
 
     build-packages:
       - desktop-file-utils
